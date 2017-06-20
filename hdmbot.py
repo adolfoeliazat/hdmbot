@@ -7,19 +7,25 @@ import os 				# miscellaneous operating system interface
 from PIL import Image 	# Python Imaging Library
 import logging			# logging facility for Python
 
+import threading
+import schedule
+import datetime
+import time
 
-auth = tweepy.OAuthHandler('vBRGejyUwo4SODXHBKuA8Q7oE', 'NIncJA2K07omhlVl14CHJtsvMiaGoGwo2nDzdfMCpuQCfAifQD')
-auth.set_access_token('860453090696343552-VXXxo95CWAoE4zfbpo0Q4zdQbbxJ0r4', 'qZ6LtE7TcB6yLxniSTm9kHrW5PghRu6Yxx26zT5SQzA9V')
+import keys
+
+auth = tweepy.OAuthHandler(keys.consumer_key, keys.consumer_secret)
+auth.set_access_token(keys.access_token, keys.access_token_secret)
 api = tweepy.API(auth)
 
 # the bot's name on Twitter (without the '@')
-self = 'hfeistos'
+self = 'hdm_bot'
 
 class StreamListener(tweepy.StreamListener):
 	
 	def on_status(self, tweet):
 		
-		# full text as string without imagelink(s) & '@hfeistos' at the beginning
+		# full text as string without imagelink(s) & '@hdm_bot' at the beginning
 		tweettext = ''
 		# list of all image-urls
 		imgurls = []
@@ -35,7 +41,6 @@ class StreamListener(tweepy.StreamListener):
 					if ('media' in tweet.extended_entities):
 						tweettext = tweet.text[:len(tweettext)-23] # cut link at end of tweet
 						for image in tweet.extended_entities['media']:
-							print "bilderabgreifen"
 							imgurls.append(image['media_url'])
 				else:
 					tweettext = tweet.text		
@@ -46,12 +51,11 @@ class StreamListener(tweepy.StreamListener):
 					if 'media' in tweet.extended_tweet['entities']:
 						tweettext = tweettext[:len(tweettext)-23]
 						for image in tweet.extended_tweet['entities']['media']:
-							print "bilderabgreifen"
 							imgurls.append(image['media_url'])
 		
 			# write tweet in logfile
 			# print ('(' + str(tweet.id) + ') ' + tweet.user.screen_name + ': ' + tweettext)
-			logging.info('(' + str(tweet.id) + ') ' + tweet.user.screen_name + ': ' + tweettext)		
+			logging.critical('(' + str(tweet.id) + ') ' + tweet.user.screen_name + ': ' + tweettext)		
 		
 			# react to specific hashtags
 			if '#workshop' in tweettext:
@@ -61,13 +65,13 @@ class StreamListener(tweepy.StreamListener):
 
 			# check if there are images
 			if len(imgurls) > 0:
-				logging.info('(' + str(tweet.id) + ') processing ' + str(len(imgurls)) + ' image(s)...')
-			# check if tweet begins with '@hfeistos'
-			if tweettext[:10] == '@hfeistos ':
-				if len(tweettext) == 10: # '@hfeistos' on the beginning is only text
+				logging.critical('(' + str(tweet.id) + ') processing ' + str(len(imgurls)) + ' image(s)...')
+			# check if tweet begins with '@hdm_bot'
+			if tweettext[:9] == '@hdm_bot ':
+				if len(tweettext) == 9: # '@hdm_bot' on the beginning is only text
 					tweettext = 'Happy Medianight!' # write some default stuff on picture
-				elif len(tweettext) > 10: # '@hfeistos' is not the only text
-					tweettext = tweettext[10:] # delete @hfeistos on beginning, keep text
+				elif len(tweettext) > 9: # '@hdm_bot' is not the only text
+					tweettext = tweettext[9:] # delete @hdm_bot on beginning, keep text
 
 			# image processing
 			for i in range(len(imgurls)):
@@ -86,9 +90,9 @@ class StreamListener(tweepy.StreamListener):
 				os.system('convert -background \'#00000080\' -fill white -font \'/usr/share/fonts/truetype/roboto/hinted/Roboto-Regular.ttf\' -size %ix -pointsize 40 caption:\'%s\' miff:- | composite -gravity south -geometry +0+0 - %s ./images/%s_reply.jpg' % (width, tweettext.encode("utf8","ignore"), filename, picname))
 				#add logo
 				os.system('composite -gravity NorthEast ./images/logo.png ./images/%s_reply.jpg ./images/%s_reply.jpg' % (picname, picname))
-				os.system('cp ./images/%s_reply.jpg /var/www/html/hdmbot/images/%s.jpg' % (picname, picname)) 
+				os.system('cp ./images/%s_reply.jpg /var/www/hdmbot/images/%s.jpg' % (picname, picname)) 
 				# answer with tweet
-				logging.info('(' + str(tweet.id) + ') posting processed image')
+                                logging.critical('(' + str(tweet.id) + ') posting processed image ( http://45.77.67.24/hdmbot/images/' + picname + '.jpg )')
 				api.update_with_media('./images/%s_reply.jpg' % picname, '@' + tweet.user.screen_name + ' #medianight #socialbots')	# post image @user
 			    # api.create_friendship(status.user.screen_name)	# create friendship with user
 
@@ -99,9 +103,27 @@ class StreamListener(tweepy.StreamListener):
 			return False	
 
 
-logging.basicConfig(filename='hdmbot.log', format='%(asctime)s : %(message)s', datefmt='%d.%m.%Y %k:%M:%S', level=logging.INFO)
-logging.info('##### hdmbot started #####')
+logging.basicConfig(filename='hdmbot.log', format='%(asctime)s : %(message)s', datefmt='%d.%m.%Y %k:%M:%S', level=logging.CRITICAL)
+logging.critical('##### hdmbot started #####')
 
 myStreamListener = StreamListener()
 stream = tweepy.Stream(auth=api.auth, listener=myStreamListener)	
-stream.filter(track=['@hfeistos'])
+def thread_stream():
+	stream.filter(track=['@hdm_bot'], async=True)
+
+def post_xdaysleft():
+	api.update_status('Die #Medianight rückt näher! Noch ' + str((datetime.datetime(2017,06,29)-datetime.datetime.now()).days) + ' Tage. #hochschuledermedien #socialbots')
+        logging.critical('Posted daily countdown to Medianight')
+
+schedule.every().day.at("18:00").do(post_xdaysleft)
+#schedule.every(1).second.do(post_xdaysleft)
+
+def thread_countdown():
+	while True:
+		schedule.run_pending()
+		time.sleep(1)
+
+
+threading.Thread(target=thread_stream).start()
+threading.Thread(target=thread_countdown).start()
+

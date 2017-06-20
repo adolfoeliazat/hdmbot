@@ -1,14 +1,14 @@
 # hdmbot 
 ###### (@hdm_bot)
-Aktuell nicht am laufen, nur einzeln via Konsole zu starten. Dauerhaft laufend kommt demnächst. 
+läuft, siehe http://45.77.67.24/hdmbot
 
 ##### Starten mit
 ```sh
-$ python2 hdmbot.py
+$ systemctl start hdmbot
 ```
 
 #### Funktionen
-- Tweet mit "@hfeistos Das ist ein Test (+Bild)"
+- Tweet mit "@hdm_bot Text" (+Bild)
 antwortet mit bearbeitetem Bild (Logo und Text)
-- Antwortet mit (Dummy-)Text auf Tweets mit "@hfeistos" und "#workshop"
-- Auf Tweets mit "@hfeistos" und "#followme" hin, folgt er entsprechendem Nutzer
+- Antwortet mit (Dummy-)Text auf Tweets mit "@hdm_bot" und "#workshop"
+- Auf Tweets mit "@hdm_bot" und "#followme" hin, folgt er entsprechendem Nutzer
